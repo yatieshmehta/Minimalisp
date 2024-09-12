@@ -720,24 +720,11 @@ lval* builtin_if(lenv* e, lval* a) {
         }
     }
 
-    // for (int i=0; i < a->count - 1; i++) {
-    //     //LASSERT_TYPE("if", a->cell[i], 0, LVAL_NUM);
-    //     LASSERT_TYPE(a, a->cell[i]->cell[0]->type == LVAL_NUM || a->cell[i]->cell[0]->type == LVAL_SEXPR,
-    //     "Function 'if' condition passed incorrect type. Got %s, expected %s or %s.",
-    //     ltype_name(a->cell[i]->cell[0]->type), ltype_name(LVAL_SEXPR), ltype_name(LVAL_NUM));
-    //     //LASSERT_TYPE("if", a->cell[i], 1, LVAL_SEXPR);
-    // }
-
     lval* x = NULL;
-    //a->cell[1]->type = LVAL_SEXPR;
-    //a->cell[2]->type = LVAL_SEXPR;
 
     for (int i=0; i < a->count - 1; i++) {
-        //a->cell[i]->type = LVAL_SEXPR;
         a->cell[i]->cell[0] = lval_eval(e, a->cell[i]->cell[0]);
         if (a->cell[i]->cell[0]->num) {
-            //printf("YES BOSS");
-            //lval_print(a->cell[i]);
             x = lval_eval(e, lval_pop(a->cell[i], 1));
             break;
         }
@@ -867,21 +854,7 @@ lval *builtin_empty(lenv* e, lval* a) {
 }
 
 lval* builtin_cons(lenv* e, lval* a){
-    if (a->cell[1]->type == LVAL_FUN) {
-        printf("\n\n|");
-        lval_print(a->cell[1]);
-        lval_print(a->cell[1]->builtin(e, lval_num(2)));
-        printf("|\n\n");
-    }
-    // printf("\n\n||");
-    // lval_print(a);
-    // printf("\n");
-    // lval_print(a->cell[0]);
-    // printf("\n");
-    // lval_print(a->cell[1]);
-    // printf("\n");
-    // printf("%s", ltype_name(a->cell[0]->type));
-    // printf("||\n\n");
+
     LASSERT_NUM("cons", a, 2);
     LASSERT_TYPE("cons", a, 1, LVAL_QEXPR);
 
@@ -908,7 +881,6 @@ lval* builtin_load(lenv* e, lval* a) {
 
         while(expr->count) {
             lval* x = lval_eval(e, lval_pop(expr, 0));
-            //lval_print(x);
             if (x->type == LVAL_ERR) { lval_println(x); }
             lval_del(x);
         }
@@ -1186,8 +1158,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
 }   
 
 lval* lval_eval(lenv* e, lval* v) {
-    //lval_print(v);
-    //printf("\n");
+
     if (v->type == LVAL_SYM) {
         lval* x = lenv_get(e, v);
         lval_del(v);
