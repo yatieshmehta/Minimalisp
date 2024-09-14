@@ -1,4 +1,5 @@
 #include "mpc.h"
+#include <stdbool.h>
 
 #ifdef _WIN32
 
@@ -1270,11 +1271,24 @@ int main(int argc, char** argv) {
         }
     } 
     if (argc >= 2) {
+
+        bool extension = false;
+
         for (int i=1; i < argc; i++) {
-            lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
-            lval* x = builtin_load(e, args);
-            if (x->type == LVAL_ERR) { lval_println(x); }
-            lval_del(x);
+            extension = false;
+            for (int j=0; j < strlen(argv[i]); j++) {
+                if (strcmp((argv[i] + j), ".minlsp") == 0) {
+                    lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
+                    lval* x = builtin_load(e, args);
+                    if (x->type == LVAL_ERR) { lval_println(x); }
+                    lval_del(x);
+                    extension = true;
+                    break;
+                }
+            }
+            if (!extension) {
+                printf("Error: file '%s' is not a .minlsp file.", argv[i]);
+            }
         }
     }
 
