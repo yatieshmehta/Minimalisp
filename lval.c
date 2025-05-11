@@ -11,16 +11,19 @@ enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_FUN, LVAL_SEXPR, LVAL_QEXPR, LVAL_STR,
 int counter = 0;
 typedef struct lval lval;
 typedef lval*(*lbuiltin)(lenv*, lval*);
+void lval_print(lval* v);
 
 struct lval {
     int type;
 
     long num;
-    int rows;
-    int cols;
 
-    char* err;
-    char* sym;
+    long rows;
+    long cols;
+    long* data;
+
+    // char* err;
+    // char* sym;
     char* str;
 
     lbuiltin builtin;
@@ -29,10 +32,10 @@ struct lval {
     lval* body;
 
     /* Structs */
-    char* struc;
-    lval* fields;
+    // char* struc;
+    // lval* fields;
 
-    int count;
+    // int count;
     lval** cell;
 };
 
@@ -58,9 +61,9 @@ lval* lval_err(char* fmt, ...) {
     vsnprintf(err, 511, fmt, va);
     
     /* Reallocate to number of bytes actually used */
-    // v->err = realloc(v->err, strlen(v->err)+1);
-    v->err = arena_alloc(global_arena, strlen(err)+1);
-    strcpy(v->err, err);
+    // v->str = realloc(v->str, strlen(v->str)+1);
+    v->str = arena_alloc(global_arena, strlen(err)+1);
+    strcpy(v->str, err);
     free(err);    
     
     /* Cleanup our va list */
@@ -72,8 +75,8 @@ lval* lval_err(char* fmt, ...) {
 lval* lval_sym(char* s) {
     lval* v = arena_alloc(global_arena, sizeof(lval));
     v->type = LVAL_SYM;
-    v->sym = arena_alloc(global_arena, strlen(s)+1);
-    strcpy(v->sym, s);
+    v->str = arena_alloc(global_arena, strlen(s)+1);
+    strcpy(v->str, s);
     return v;
 }
 
@@ -107,7 +110,7 @@ lval* lval_lambda(lval* formals, lval* body) {
 lval* lval_sexpr(void) {
     lval* v = arena_alloc(global_arena, sizeof(lval));
     v->type = LVAL_SEXPR;
-    v->count = 0;
+    v->num = 0;
     v->cell = NULL;
     return v;
 }
@@ -115,7 +118,7 @@ lval* lval_sexpr(void) {
 lval* lval_qexpr(void) {
     lval* v = arena_alloc(global_arena, sizeof(lval));
     v->type = LVAL_QEXPR;
-    v->count = 0;
+    v->num = 0;
     v->cell = NULL;
     return v;
 }
@@ -123,24 +126,32 @@ lval* lval_qexpr(void) {
 lval* lval_struct(void) {
     lval* v = arena_alloc(global_arena, sizeof(lval));
     v->type = LVAL_STRUCT;
-    v->fields = NULL;
+    v->body = NULL;
     return v;
 }
 
 lval* lval_instance(void) {
     lval* v = arena_alloc(global_arena, sizeof(lval));
     v->type = LVAL_INST;
-    v->struc = NULL;
-    v->fields = NULL;
+    v->str = NULL;
+    v->body = NULL;
     return v;
 }
 
-lval* lval_matrix(int cols, int rows, lval* data) {
+void lval_del(lval* v);
+
+lval* lval_matrix(long rows, long cols, lval* data) {
     lval* v = arena_alloc(global_arena, sizeof(lval));
+    v->data = arena_alloc(global_arena, sizeof(long) * data->num);
+
     v->type = LVAL_MAT;
     v->cols = cols;
     v->rows = rows;
-    v->body = data;
+    v->num = data->num;
+
+    for (int i=0; i<data->num; i++) {
+        v->data[i] = data->cell[i]->num;
+    }
 
     return v;
 }
@@ -150,12 +161,12 @@ void lenv_del(lenv* e);
 void lval_del(lval* v) {
     switch (v->type) {
         // case LVAL_NUM: break;
-        // case LVAL_ERR: free(v->err); break;
-        // case LVAL_SYM: free(v->sym); break;
+        // case LVAL_ERR: free(v->str); break;
+        // case LVAL_SYM: free(v->str); break;
         // case LVAL_STR: free(v->str); break;
         case LVAL_QEXPR:
         case LVAL_SEXPR:
-            for (int i = 0; i < v->count; i++) {
+            for (int i = 0; i < v->num; i++) {
                 lval_del(v->cell[i]);
             }
             free(v->cell);
@@ -168,11 +179,13 @@ void lval_del(lval* v) {
             }
             break;
         case LVAL_STRUCT:
-            lval_del(v->fields);
+            lval_del(v->body);
             break; 
         case LVAL_INST:
             // free(v->struc);
-            lval_del(v->fields);
+            lval_del(v->body);
+        case LVAL_MAT:
+            break;
     }
     
     // free(v);
@@ -192,12 +205,12 @@ lval* lval_copy(lval* v) {
         
         /* Copy Strings using malloc and strcpy */
         case LVAL_ERR:
-            x->err = arena_alloc(global_arena, strlen(v->err) + 1);
-            strcpy(x->err, v->err); break;
+            x->str = arena_alloc(global_arena, strlen(v->str) + 1);
+            strcpy(x->str, v->str); break;
             
         case LVAL_SYM:
-            x->sym = arena_alloc(global_arena, strlen(v->sym) + 1);
-            strcpy(x->sym, v->sym); break;
+            x->str = arena_alloc(global_arena, strlen(v->str) + 1);
+            strcpy(x->str, v->str); break;
         
         case LVAL_STR:
             x->str = arena_alloc(global_arena, strlen(v->str) + 1);
@@ -206,9 +219,9 @@ lval* lval_copy(lval* v) {
         /* Copy Lists by copying each sub-expression */
         case LVAL_SEXPR:
         case LVAL_QEXPR:
-            x->count = v->count;
-            x->cell = malloc(sizeof(lval*) * x->count);
-            for (int i = 0; i < x->count; i++) {
+            x->num = v->num;
+            x->cell = malloc(sizeof(lval*) * x->num);
+            for (int i = 0; i < x->num; i++) {
                 x->cell[i] = lval_copy(v->cell[i]);
             }
             break;
@@ -223,47 +236,55 @@ lval* lval_copy(lval* v) {
             }
             break;
         case LVAL_STRUCT:
-             x->fields = lval_copy(v->fields);
+             x->body = lval_copy(v->body);
              break;
         case LVAL_INST:
-            x->struc = arena_alloc(global_arena, strlen(v->struc) + 1);
-            strcpy(x->struc, v->struc);
-            x->fields = lval_copy(v->fields);
+            x->str = arena_alloc(global_arena, strlen(v->str) + 1);
+            strcpy(x->str, v->str);
+            x->body = lval_copy(v->body);
+        
+        case LVAL_MAT:
+            x->cols = v->cols;
+            x->rows = v->rows;
+            x->num = v->num;
+            x->data = arena_alloc(global_arena, sizeof(long) * x->num);
+            memcpy(x->data, v->data, sizeof(long) * x->num);
+            break;
     }
     
     return x;
 }
 
 lval* lval_add(lval* v, lval* x) {
-    v->count++;
-    v->cell = realloc(v->cell, sizeof(lval*) * v->count);
-    v->cell[v->count-1] = x;
+    v->num++;
+    v->cell = realloc(v->cell, sizeof(lval*) * v->num);
+    v->cell[v->num-1] = x;
     return v;
 }
 
 lval* lval_join(lval* x, lval* y) {    
-    for (int i = 0; i < y->count; i++) {
+    for (int i = 0; i < y->num; i++) {
         x = lval_add(x, y->cell[i]);
     }
     free(y->cell);
     // free(y);
     return x;
 }
-void lval_print(lval* v);
+
 char* ltype_name(int t);
 
 lval* lval_pop(lval* v, int i) {
     lval* x = v->cell[i];
-    if (v->count == 1) {
+    if (v->num == 1) {
         free(v->cell); // Might lead to double free, maybe remove this later?
         v->cell = NULL;
     } else {
         memmove(&v->cell[i], &v->cell[i+1],
-            sizeof(lval*) * (v->count-i-1));    
-        v->cell = realloc(v->cell, sizeof(lval*) * (v->count-1));
+            sizeof(lval*) * (v->num-i-1));    
+        v->cell = realloc(v->cell, sizeof(lval*) * (v->num-1));
     }
 
-    v->count--;
+    v->num--;
     return x;
 }
 lval* lval_take(lval* v, int i) {
@@ -277,8 +298,8 @@ int lval_eq(lval* x, lval* y) {
 
     switch (x->type) {
         case LVAL_NUM: return x->num == y->num;
-        case LVAL_SYM: return strcmp(x->sym, y->sym) == 0;
-        case LVAL_ERR: return strcmp(x->sym, y->sym) == 0;
+        case LVAL_SYM: return strcmp(x->str, y->str) == 0;
+        case LVAL_ERR: return strcmp(x->str, y->str) == 0;
         case LVAL_STR: return strcmp(x->str, y->str) == 0;
         case LVAL_FUN:
             if (x->builtin || y->builtin) {
@@ -288,13 +309,20 @@ int lval_eq(lval* x, lval* y) {
             }
         case LVAL_QEXPR:
         case LVAL_SEXPR:
-            if (x->count != y->count) { return 0; }
-            for (int i=0; i < x->count; i++) {
+            if (x->num != y->num) { return 0; }
+            for (int i=0; i < x->num; i++) {
                 if (!lval_eq(x->cell[i], y->cell[i])) { return 0; }
             }
-
             return 1;
-        break;
+        case LVAL_MAT:
+            if (x->rows == y->rows && x->cols == y->cols) {
+                for (int i=0; i<x->num; i++) {
+                    if (x->data[i] != y->data[i]) { return 0; }
+                }
+                return 1;
+            } else {
+                return 0;
+            }
     }
 
     return 0;
@@ -304,9 +332,9 @@ int lval_eq(lval* x, lval* y) {
 
 void lval_print_expr(lval* v, char open, char close) {
     putchar(open);
-    for (int i = 0; i < v->count; i++) {
+    for (int i = 0; i < v->num; i++) {
         lval_print(v->cell[i]);        
-        if (i != (v->count-1)) {
+        if (i != (v->num-1)) {
             putchar(' ');
         }
     }
@@ -324,8 +352,8 @@ void lval_print_str(lval* v) {
 void lval_print(lval* v) {
     switch (v->type) {
         case LVAL_NUM:     printf("%li", v->num); break;
-        case LVAL_ERR:     printf("Error: %s", v->err); break;
-        case LVAL_SYM:     printf("%s", v->sym); break;
+        case LVAL_ERR:     printf("Error: %s", v->str); break;
+        case LVAL_SYM:     printf("%s", v->str); break;
         case LVAL_STR:     lval_print_str(v); break;
         case LVAL_SEXPR: lval_print_expr(v, '(', ')'); break;
         case LVAL_QEXPR: lval_print_expr(v, '{', '}'); break;
@@ -346,6 +374,18 @@ void lval_print(lval* v) {
         case LVAL_INST:
         printf("<instance>");
         break;
+        case LVAL_MAT:
+            printf("[\n");
+            for (int i = 0; i < v->rows; i++) {
+                printf("  [");  // Indent each row for clarity
+                for (int j = 0; j < v->cols - 1; j++) {
+                    printf("%ld, ", v->data[i * v->cols + j]);  // Print each element, except the last one
+                }
+                printf("%ld", v->data[i * v->cols + v->cols - 1]);  // Print the last element in the row
+                printf("]\n");
+            }
+            printf("]\n");
+        break;
     }
 }
 
@@ -362,6 +402,7 @@ char* ltype_name(int t) {
         case LVAL_QEXPR: return "Q-Expression";
         case LVAL_STRUCT: return "Structure";
         case LVAL_INST: return "Instance";
+        case LVAL_MAT: return "Matrix";
         default: return "Unknown";
     }
 }
