@@ -5,6 +5,7 @@
 #include "builtin.h"
 #include "eval.h"
 #include "parser.h"
+#include "arena.h"
 #include <stdbool.h>
 
 #ifdef _WIN32
@@ -39,6 +40,9 @@ double now_sec() {
 
 #endif
 
+arena_t* global_arena;
+arena_t* temp_arena;
+
 int main(int argc, char** argv) {
     
     Number = mpc_new("number");
@@ -63,8 +67,13 @@ int main(int argc, char** argv) {
         ",
         Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
 
+    global_arena = arena_create(1024 * 64);
+
     lenv* e = lenv_new();
     lenv_add_builtins(e);
+
+    size_t size = sizeof(lval);
+    printf("Size: %zu \n", size);
 
     mpc_result_t first;
     mpc_parse("<stdin>", "(func {def} (lambda {args body} {func (list (first args)) (lambda (rest args) body)}))", Lispy, &first);
@@ -119,7 +128,8 @@ int main(int argc, char** argv) {
     }
 
     lenv_del(e);
-
+    arena_destroy(global_arena);
+    printf("ARENA DESTROYED!");
     mpc_cleanup(8, Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
     
     return 0;

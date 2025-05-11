@@ -6,7 +6,6 @@
 #include "mpc.h"
 
 lval* builtin_lambda(lenv* e, lval* a);
-lval* builtin_matrix(lenv* e, lval* a);
 lval* builtin_list(lenv* e, lval* a);
 lval* builtin_first(lenv* e, lval* a);
 lval* builtin_rest(lenv* e, lval* a);
