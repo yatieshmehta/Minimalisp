@@ -56,7 +56,7 @@ lval* lenv_get(lenv* e, lval* k) {
     for (int i = 0; i < e->count; i++) {
         /* Check if the stored string matches the symbol string */
         /* If it does, return a copy of the value */
-        if (strcmp(e->syms[i], k->sym) == 0) {
+        if (strcmp(e->syms[i], k->str) == 0) {
             return lval_copy(e->vals[i]);
         }
     }
@@ -64,7 +64,7 @@ lval* lenv_get(lenv* e, lval* k) {
     if (e->parent) {
         return lenv_get(e->parent, k);
     } else {
-        return lval_err("Unbound Symbol '%s'", k->sym);
+        return lval_err("Unbound Symbol '%s'", k->str);
     }
 
 }
@@ -76,7 +76,7 @@ void lenv_put(lenv* e, lval* k, lval* v) {
     for (int i = 0; i < e->count; i++) {
         /* If variable is found delete item at that position */
         /* And replace with variable supplied by user */
-        if (strcmp(e->syms[i], k->sym) == 0) {
+        if (strcmp(e->syms[i], k->str) == 0) {
             lval_del(e->vals[i]);
             e->vals[i] = lval_copy(v);
             return;
@@ -98,8 +98,8 @@ void lenv_put(lenv* e, lval* k, lval* v) {
     
     /* Copy contents of lval and symbol string into new location */
     e->vals[e->count-1] = lval_copy(v);
-    e->syms[e->count-1] = arena_alloc(global_arena, strlen(k->sym)+1);
-    strcpy(e->syms[e->count-1], k->sym);
+    e->syms[e->count-1] = arena_alloc(global_arena, strlen(k->str)+1);
+    strcpy(e->syms[e->count-1], k->str);
 }
 
 void lenv_def(lenv* env, lval* sym, lval* val) {

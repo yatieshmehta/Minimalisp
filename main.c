@@ -6,39 +6,8 @@
 #include "eval.h"
 #include "parser.h"
 #include "arena.h"
+#include "utils.h"
 #include <stdbool.h>
-
-#ifdef _WIN32
-#include <windows.h>
-
-static char buffer[2048];
-
-char* readline(char* prompt) {
-    fputs(prompt, stdout);
-    fgets(buffer, 2048, stdin);
-    char* cpy = malloc(strlen(buffer)+1);
-    strcpy(cpy, buffer);
-    cpy[strlen(cpy)-1] = '\0';
-    return cpy;
-}
-
-void add_history(char* unused) {}
-
-double now_sec() {
-    LARGE_INTEGER frequency, counter;
-    QueryPerformanceFrequency(&frequency);
-    QueryPerformanceCounter(&counter);
-
-    return (double)counter.QuadPart / frequency.QuadPart;
-}
-
-#else
-#include <editline/readline.h>
-#include <editline/history.h>
-
-// Add code for Ubuntu now_sec()
-
-#endif
 
 arena_t* global_arena;
 arena_t* temp_arena;
@@ -73,7 +42,7 @@ int main(int argc, char** argv) {
     lenv_add_builtins(e);
 
     size_t size = sizeof(lval);
-    printf("Size: %zu \n", size);
+    // printf("Size: %zu \n", size);
 
     mpc_result_t first;
     mpc_parse("<stdin>", "(func {def} (lambda {args body} {func (list (first args)) (lambda (rest args) body)}))", Lispy, &first);
@@ -84,7 +53,7 @@ int main(int argc, char** argv) {
     if (argc == 1) {
 
         puts("Lispy Version 0.0.0.0.7");
-        puts("Press Ctrl+c to Exit\n");    
+        puts("Press Ctrl+c to Exit\n");
 
         while (1) {
             char* input = readline("lispy> ");
@@ -96,7 +65,7 @@ int main(int argc, char** argv) {
                 lval_println(x);
                 lval_del(x);
                 mpc_ast_delete(r.output);
-            } else {        
+            } else {
                 mpc_err_print(r.error);
                 mpc_err_delete(r.error);
             }
@@ -129,7 +98,6 @@ int main(int argc, char** argv) {
 
     lenv_del(e);
     arena_destroy(global_arena);
-    printf("ARENA DESTROYED!");
     mpc_cleanup(8, Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
     
     return 0;
