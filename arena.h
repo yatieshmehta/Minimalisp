@@ -1,5 +1,6 @@
 #ifndef ARENA_H
 #define ARENA_H
+#include <stddef.h>
 
 typedef struct arena arena_t;
 extern arena_t* global_arena;
