@@ -6,7 +6,7 @@ OBJDIR = obj
 OBJFILES = $(OBJDIR)/arena.o $(OBJDIR)/builtin.o $(OBJDIR)/eval.o $(OBJDIR)/lenv.o $(OBJDIR)/lval.o $(OBJDIR)/main.o $(OBJDIR)/mpc.o $(OBJDIR)/parser.o utils.o
 
 # Executable
-TARGET = lispy
+TARGET = minimalisp
 
 # Source files
 SRCS = builtin.c eval.c lenv.c lval.c main.c mpc.c parser.c arena.c utils.c
