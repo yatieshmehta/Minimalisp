@@ -7,19 +7,19 @@ lval* lval_eval(lenv* e, lval* v);
 lval* lval_call(lenv* e, lval* f, lval* a) {
     if (f->builtin) { return f->builtin(e, a); }
 
-    int given = a->num;
-    int total = f->formals->num;
+    int given = a->count;
+    int total = f->formals->count;
 
-    while (a->num) {
-        if (f->formals->num == 0) {
+    while (a->count) {
+        if (f->formals->count == 0) {
             lval_del(a);
             return lval_err("Function passed too many arguments. Got %i, expected %i.", given, total);
         }
 
         lval* sym = lval_pop(f->formals, 0);
 
-        if (strcmp(sym->str, "&") == 0) {
-            if (f->formals->num != 1) {
+        if (strcmp(sym->sym, "&") == 0) {
+            if (f->formals->count != 1) {
                 lval_del(a);
                 return lval_err("Function invalid format. Symbol '&' not followed by single symbol.");
             }
@@ -40,8 +40,8 @@ lval* lval_call(lenv* e, lval* f, lval* a) {
 
     lval_del(a);
 
-    if (f->formals->num > 0 && strcmp(f->formals->cell[0]->str, "&") == 0) {
-        if (f->formals->num != 2) {
+    if (f->formals->count > 0 && strcmp(f->formals->cell[0]->sym, "&") == 0) {
+        if (f->formals->count != 2) {
             return lval_err("Function format invalid. Symbol '&' not followed by a single symbol.");
         }
     
@@ -54,7 +54,7 @@ lval* lval_call(lenv* e, lval* f, lval* a) {
         lval_del(val);
     }
 
-    if (f->formals->num == 0) {
+    if (f->formals->count == 0) {
         f->env->parent = e;
         return builtin_eval(f->env, lval_add(lval_sexpr(), lval_copy(f->body)));
     } else {
@@ -66,16 +66,16 @@ lval* lval_call(lenv* e, lval* f, lval* a) {
 
 lval* lval_eval_sexpr(lenv* e, lval* v) {
     
-    for (int i = 0; i < v->num; i++) {
+    for (int i = 0; i < v->count; i++) {
         v->cell[i] = lval_eval(e, v->cell[i]);
     }
     
-    for (int i = 0; i < v->num; i++) {
+    for (int i = 0; i < v->count; i++) {
         if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); }
     }
     
-    if (v->num == 0) { return v; }    
-    if (v->num == 1) { return lval_take(v, 0); }
+    if (v->count == 0) { return v; }    
+    if (v->count == 1) { return lval_take(v, 0); }
     
     /* Ensure first element is a function after evaluation */
     lval* f = lval_pop(v, 0);
@@ -84,10 +84,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
             lval* x = lenv_get(e, f);
             lval_del(f);
             f = x;
-            if (f->type == LVAL_ERR) {
-                lval_del(v);
-                return f;
-            }
+            if (f->type == LVAL_ERR) { return f; }
         }
 
     if (f->type != LVAL_FUN) {

@@ -11,7 +11,7 @@ lval* builtin_lambda(lenv* e, lval* a) {
     LASSERT_TYPE("lambda", a, 0, LVAL_QEXPR);
     LASSERT_TYPE("lambda", a, 1, LVAL_QEXPR);
 
-    for (int i=0; i < a->cell[0]->num; i++) {
+    for (int i=0; i < a->cell[0]->count; i++) {
         LASSERT(a, (a->cell[0]->cell[i]->type == LVAL_SYM), 
         "Cannot define a non-symbol. Got %s, expected %s",
         ltype_name(a->cell[0]->cell[i]->type), ltype_name(LVAL_SYM));
@@ -34,9 +34,9 @@ lval* builtin_first(lenv* e, lval* a) {
     LASSERT_TYPE("first", a, 0, LVAL_QEXPR);
     LASSERT_NOT_EMPTY("first", a, 0);
     
+    lval_print(a);
     lval* v = lval_take(a, 0);
-    while (v->num > 1) { lval_del(lval_pop(v, 1)); }
-    return v->cell[0];
+    return lval_take(v, 0);     
 }
 
 lval* builtin_rest(lenv* e, lval* a) {
@@ -44,7 +44,7 @@ lval* builtin_rest(lenv* e, lval* a) {
     LASSERT_TYPE("rest", a, 0, LVAL_QEXPR);
     LASSERT_NOT_EMPTY("rest", a, 0);
 
-    lval* v = lval_take(a, 0);    
+    lval* v = lval_take(a, 0); 
     lval_del(lval_pop(v, 0));
     return v;
 }
@@ -54,7 +54,7 @@ lval* builtin_last(lenv* e, lval* a) {
     LASSERT_TYPE("last", a, 0, LVAL_QEXPR);
     LASSERT_NOT_EMPTY("last", a, 0);
 
-    lval* v = a->cell[0]->cell[a->cell[0]->num - 1];
+    lval* v = a->cell[0]->cell[a->cell[0]->count - 1];
     return v;
 }
 
@@ -69,13 +69,13 @@ lval* builtin_eval(lenv* e, lval* a) {
 
 lval* builtin_join(lenv* e, lval* a) {
     
-    for (int i = 0; i < a->num; i++) {
+    for (int i = 0; i < a->count; i++) {
         LASSERT_TYPE("join", a, i, LVAL_QEXPR);
     }
     
     lval* x = lval_pop(a, 0);
     
-    while (a->num) {
+    while (a->count) {
         lval* y = lval_pop(a, 0);
         x = lval_join(x, y);
     }
@@ -86,17 +86,17 @@ lval* builtin_join(lenv* e, lval* a) {
 
 lval* builtin_op(lenv* e, lval* a, char* op) {
     
-    for (int i = 0; i < a->num; i++) {
+    for (int i = 0; i < a->count; i++) {
         LASSERT_TYPE(op, a, i, LVAL_NUM);
     }
     
     lval* x = lval_pop(a, 0);
     
-    if ((strcmp(op, "-") == 0) && a->num == 0) {
+    if ((strcmp(op, "-") == 0) && a->count == 0) {
         x->num = -x->num;
     }
     
-    while (a->num > 0) {    
+    while (a->count > 0) {    
         lval* y = lval_pop(a, 0);
         
         if (strcmp(op, "+") == 0) { x->num += y->num; }
@@ -211,10 +211,10 @@ lval* builtin_str(lenv* e, lval* a) {
 
 lval* builtin_if(lenv* e, lval* a) {
 
-    for (int i=0; i < a->num; i++) {
+    for (int i=0; i < a->count; i++) {
         LASSERT_TYPE("if", a, i, LVAL_QEXPR);
         
-        if (i != a->num - 1) {
+        if (i != a->count - 1) {
             LASSERT(a, (a->cell[i]->cell[0]->type == LVAL_NUM || 
                 a->cell[i]->cell[0]->type == LVAL_SEXPR),
             "Function 'if' condition passed incorrect type. Got %s, expected %s or %s.",
@@ -222,7 +222,7 @@ lval* builtin_if(lenv* e, lval* a) {
             
         } else {
             LASSERT(a, (a->cell[i]->cell[0]->type == LVAL_NUM || 
-                (a->cell[i]->cell[0]->type == LVAL_SYM && strcmp(a->cell[i]->cell[0]->str, "else") == 0) ||
+                (a->cell[i]->cell[0]->type == LVAL_SYM && strcmp(a->cell[i]->cell[0]->sym, "else") == 0) ||
                 a->cell[i]->cell[0]->type == LVAL_SEXPR),
             "Function 'if' condition passed incorrect type. Got %s, expected %s, %s or 'else'.",
             ltype_name(a->cell[i]->cell[0]->type), ltype_name(LVAL_NUM), ltype_name(LVAL_SEXPR));
@@ -231,23 +231,23 @@ lval* builtin_if(lenv* e, lval* a) {
 
     lval* x = NULL;
 
-    for (int i=0; i < a->num - 1; i++) {
+    for (int i=0; i < a->count - 1; i++) {
         a->cell[i]->cell[0] = lval_eval(e, a->cell[i]->cell[0]);
-        if (a->cell[i]->cell[0]->type == LVAL_ERR) { return lval_take(a->cell[i], 0); }
-
+        // LASSERT_TYPE("idk", a->cell[i], 0, LVAL_NUM);
+        if (a->cell[i]->cell[0]->type == LVAL_ERR) {printf("%s", a->cell[i]->cell[0]->err);}
         if (a->cell[i]->cell[0]->num) {
             x = lval_eval(e, lval_pop(a->cell[i], 1));
             break;
         }
     }
 
-    if (!x && a->cell[a->num - 1]->cell[0]->type == LVAL_SYM && strcmp(a->cell[a->num - 1]->cell[0]->str, "else") == 0) {
-        x = lval_eval(e, lval_pop(a->cell[a->num - 1], 1));
-    } else if (!x && a->cell[a->num - 1]->cell[0]->num) {
-        if (a->cell[a->num - 1]->num > 1) {
-            lval_print(a->cell[a->num - 1]->cell[2]);
+    if (!x && a->cell[a->count - 1]->cell[0]->type == LVAL_SYM && strcmp(a->cell[a->count - 1]->cell[0]->sym, "else") == 0) {
+        x = lval_eval(e, lval_pop(a->cell[a->count - 1], 1));
+    } else if (!x && a->cell[a->count - 1]->cell[0]->num) {
+        if (a->cell[a->count - 1]->count > 1) {
+            lval_print(a->cell[a->count - 1]->cell[2]);
         }
-        x = lval_eval(e, lval_pop(a->cell[a->num - 1], 1)); 
+        x = lval_eval(e, lval_pop(a->cell[a->count - 1], 1)); 
     } else if (!x) {
         x = lval_sexpr();
     }
@@ -257,11 +257,11 @@ lval* builtin_if(lenv* e, lval* a) {
 }
 
 lval* builtin_and(lenv* e, lval* a) {
-    for (int i=0; i < a->num; i++) {
+    for (int i=0; i < a->count; i++) {
         LASSERT_TYPE("and", a, i, LVAL_NUM);
     }
 
-    for (int i=0; i < a->num; i++) {
+    for (int i=0; i < a->count; i++) {
         if (a->cell[i]->num == 0) {
             lval_del(a);
             return lval_num(0);
@@ -273,11 +273,11 @@ lval* builtin_and(lenv* e, lval* a) {
 }
 
 lval* builtin_or(lenv* e, lval* a) {
-    for (int i=0; i < a->num; i++) {
+    for (int i=0; i < a->count; i++) {
         LASSERT_TYPE("or", a, i, LVAL_NUM);
     }
 
-    for (int i=0; i < a->num; i++) {
+    for (int i=0; i < a->count; i++) {
         if (a->cell[i]->num == 1) {
             lval_del(a);
             return lval_num(1);
@@ -320,7 +320,7 @@ lval* builtin_var(lenv* e, lval* a, char* func) {
 
     lval* syms = a->cell[0];
 
-    for (int i=0; i < syms->num; i++) {
+    for (int i=0; i < syms->count; i++) {
         LASSERT(a, (syms->cell[i]->type == LVAL_SYM),
         "Function '%s' cannot define non-symbol. "
         "Got %s, Expected %s.", func,
@@ -328,11 +328,11 @@ lval* builtin_var(lenv* e, lval* a, char* func) {
         ltype_name(LVAL_SYM));
     }
 
-    LASSERT(a, (syms->num == a->num-1),
+    LASSERT(a, (syms->count == a->count-1),
     "Function '%s' passed too many arguments for symbols. \
-    Got %i, Expected %i.", func, syms->num, a->num-1);
+    Got %i, Expected %i.", func, syms->count, a->count-1);
 
-    for (int i=0; i < syms->num; i++) {
+    for (int i=0; i < syms->count; i++) {
         if (strcmp(func, "def") == 0) {
             lenv_def(e, syms->cell[i], a->cell[i + 1]);
         }
@@ -357,7 +357,7 @@ lval *builtin_put(lenv* e, lval* a) {
 lval *builtin_empty(lenv* e, lval* a) {
     LASSERT_NUM("empty?", a, 1);
     LASSERT_TYPE("empty?", a, 0, LVAL_QEXPR);
-    if (a->cell[0]->num == 0) {
+    if (a->cell[0]->count == 0) {
         return lval_num(1);
     } else {
         return lval_num(0);
@@ -370,7 +370,7 @@ lval* builtin_cons(lenv* e, lval* a){
     LASSERT_TYPE("cons", a, 1, LVAL_QEXPR);
 
     a->type = LVAL_QEXPR;
-    if (a->cell[1]->type == LVAL_QEXPR && a->cell[1]->num == 0) {
+    if (a->cell[1]->type == LVAL_QEXPR && a->cell[1]->count == 0) {
         lval_pop(a, 1);
         return a;
     } else {
@@ -390,7 +390,7 @@ lval* builtin_load(lenv* e, lval* a) {
         lval* expr = lval_read(r.output);
         mpc_ast_delete(r.output);
 
-        while(expr->num) {
+        while(expr->count) {
             lval* x = lval_eval(e, lval_pop(expr, 0));
             if (x->type == LVAL_ERR) { lval_println(x); }
             lval_del(x);
@@ -416,7 +416,7 @@ lval* builtin_load(lenv* e, lval* a) {
 lval* builtin_print(lenv* e, lval* a) {
 
   /* Print each argument followed by a space */
-  for (int i = 0; i < a->num; i++) {
+  for (int i = 0; i < a->count; i++) {
     lval_print(a->cell[i]); putchar(' ');
   }
 
@@ -451,7 +451,7 @@ lval* builtin_length(lenv* e, lval* a) {
     LASSERT_TYPE("length", a, 0, LVAL_QEXPR);
     LASSERT_NOT_EMPTY("length", a, 0);
     
-    return lval_num(a->cell[0]->num);
+    return lval_num(a->cell[0]->count);
 }
 
 lval* builtin_get(lenv*e, lval* a) {
@@ -462,12 +462,12 @@ lval* builtin_get(lenv*e, lval* a) {
     lval* inst = lenv_get(e, a->cell[0]->cell[0]);
     lval* struc = lenv_get(e, inst);
 
-    for (int i=0; i < struc->body->num; i++) {
-        if (strcmp(struc->body->cell[i]->str, a->cell[0]->cell[1]->str) == 0) {
-            return inst->body->cell[i];
+    for (int i=0; i < struc->fields->count; i++) {
+        if (strcmp(struc->fields->cell[i]->sym, a->cell[0]->cell[1]->sym) == 0) {
+            return inst->fields->cell[i];
         }
     }
-    return lval_err("Struct '%s' has no attribute '%s'.", inst->str, a->cell[0]->cell[1]->str);
+    return lval_err("Struct '%s' has no attribute '%s'.", inst->struc, a->cell[0]->cell[1]->sym);
 }
 
 lval* builtin_make(lenv* e, lval* a) {
@@ -477,17 +477,17 @@ lval* builtin_make(lenv* e, lval* a) {
 
     lval* struc = lenv_get(e, a->cell[0]);
 
-    LASSERT(a, (a->cell[1]->num - 1 == struc->body->num),
+    LASSERT(a, (a->cell[1]->count - 1 == struc->fields->count),
     "Struct '%s' passed incorrect number of arguments. \
-     Got %i, Expected %i.", a->cell[0], a->num-1, struc->body->num);
+     Got %i, Expected %i.", a->cell[0], a->count-1, struc->fields->count);
 
     lval* name = lval_pop(a->cell[1], 0);
     lval* inst = lval_instance();
-    inst->str = a->cell[0]->str;
-    inst->body = a->cell[1];
+    inst->struc = a->cell[0]->sym;
+    inst->fields = a->cell[1];
     lenv_put(e, name, inst);
 
-    return lval_num(0);
+    return lval_sexpr();
 }
 
 lval* builtin_struct(lenv* e, lval* a) {
@@ -495,15 +495,15 @@ lval* builtin_struct(lenv* e, lval* a) {
     lval* body = lval_pop(a, 0);
     lval* name = lval_pop(body, 0);
 
-    struc->body = body;
+    struc->fields = body;
     lenv_put(e, name, struc);
 
-    //char* make = malloc(strlen(a->cell[0]->cell[0]->str) + 6);
+    //char* make = malloc(strlen(a->cell[0]->cell[0]->sym) + 6);
     //strcpy(make, "make-"); 
-    //strcat(make, a->cell[0]->cell[0]->str);
+    //strcat(make, a->cell[0]->cell[0]->sym);
     //free(make);
 
-    return lval_num(0);
+    return lval_sexpr();
 }
 
 lval* builtin_matrix(lenv* e, lval* a) {
@@ -515,23 +515,37 @@ lval* builtin_matrix(lenv* e, lval* a) {
     LASSERT_TYPE("matrix", a, 2, LVAL_NUM);
     LASSERT_TYPE("matrix", a, 3, LVAL_QEXPR);
 
-    for (int i=0; i<a->cell[3]->num; i++) {
+    for (int i=0; i<a->cell[3]->count; i++) {
         LASSERT_TYPE("matrix", a->cell[3], i, LVAL_NUM);
     }
 
-    LASSERT(a, (a->cell[1]->num * a->cell[2]->num == a->cell[3]->num), "Data size should match matrix shape.");
-    printf("\nRAND: %ldx%ld with count %li\n", a->cell[1]->num, a->cell[2]->num, a->cell[3]->num);
-    lval* v = lval_matrix(a->cell[1]->num, a->cell[2]->num, a->cell[3]);
-    printf("v (in builtin): ptr=%p rows=%ld cols=%ld num=%ld\n", (void*)v, v->rows, v->cols, v->num);
-
-    printf("v pointer: %p\n", (void*)v);
-    printf("v->rows: %ld\n", v->rows);
-    printf("v->cols: %ld\n", v->cols);
-
-    printf("\nBUILTIN_MATRIX: %ldx%ld with count %li\n", v->rows, v->cols, v->num);
-    lenv_put(e, lval_take(lval_take(a, 0), 0), v); // Do I need to remove the lvaltake and just del a after? Thats what I do in add builtin
+    LASSERT(a, (a->cell[1]->num * a->cell[2]->num == a->cell[3]->count), "Data size should match matrix shape.");
+    
+    lval* matrix = lval_matrix(a->cell[1]->num, a->cell[2]->num, a->cell[3]);
+    lenv_put(e, lval_take(lval_take(a, 0), 0), matrix); // Do I need to remove the lvaltake and just del a after? Thats what I do in add builtin
 
     return lval_sexpr();
+}
+
+lval* builtin_vector(lenv* e, lval* a);
+
+lval* builtin_matmult(lenv* e, lval* a) {
+    LASSERT_NUM("mat-mult", a, 2);
+    LASSERT_TYPE("mat-mult", a, 0, LVAl_MAT);
+    LASSERT_TYPE("mat-mult", a, 1, LVAl_MAT);
+    LASSERT(a, (a->cell[1]->rows == a->cell[2]->cols && a->cell[2]->rows == a->cell[1]->cols), "Matrix shapes should align.");
+    
+
+}
+
+lval* builtin_dotproduct(lenv* e, lval* a) {
+    LASSERT_NUM("dot-product", a, 2);
+    LASSERT_TYPE("dot-product", a, 0, LVAL_VEC);
+    LASSERT_TYPE("dot-product", a, 1, LVAL_VEC);
+    LASSERT(a, (a->cell[0]->num == a->cell[1]->num), "Vector 1 and 2 sizes should match.");
+
+    
+
 }
 
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
@@ -541,21 +555,23 @@ void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
     lval_del(k); lval_del(v);
 }
 
-void lenv_add_builtins(lenv* e) {   
+void lenv_add_builtins(lenv* e) {
     /* Variable Functions */
     lval* sym = lval_sym("empty");
     lval* empty = lval_qexpr();
 
     lenv_add_builtin(e, "last", builtin_last);
     lenv_add_builtin(e, "make", builtin_make);
-    lenv_add_builtin(e, "matrix", builtin_matrix);
     lenv_add_builtin(e, "struct", builtin_struct);
+    lenv_add_builtin(e, "matrix", builtin_matrix);
     lenv_add_builtin(e, "get", builtin_get);
     lenv_add_builtin(e, "length", builtin_length);
     lenv_add_builtin(e, "string?", builtin_str);
     lenv_add_builtin(e, "integer?", builtin_int);
     lenv_add_builtin(e, "qexpr?", builtin_qexpr);
+    
     lenv_put(e, sym, empty);
+
     lenv_add_builtin(e, "zero?", builtin_zero);
     lenv_add_builtin(e, "cons", builtin_cons);
     lenv_add_builtin(e, "empty?", builtin_empty);
