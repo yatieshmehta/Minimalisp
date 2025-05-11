@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_FUN, LVAL_SEXPR, LVAL_QEXPR, LVAL_STR, LVAL_STRUCT, LVAL_INST, LVAl_MAT, LVAL_VEC };
+enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_FUN, LVAL_SEXPR, LVAL_QEXPR, LVAL_STR, LVAL_STRUCT, LVAL_INST, LVAL_MAT, LVAL_VEC };
 
 typedef struct lenv lenv;
 typedef struct lval lval;
@@ -15,23 +15,15 @@ typedef lval*(*lbuiltin)(lenv*, lval*);
 struct lval {
     int type;
     long num;
-    int rows;
-    int cols;
-    char* err;
-    char* sym;
+    long rows;
+    long cols;
+    long* data;
     char* str;
     lbuiltin builtin;
     lenv* env;
     lval* formals;
     lval* body;
-    
-    /* Structs */
-    char* struc;
-    lval* fields;
-    
-    int count;
-    lval** cell;
-};
+    lval** cell;};
 
 
 lval* lval_num(long x);
@@ -44,7 +36,7 @@ lval* lval_sexpr(void);
 lval* lval_qexpr(void);
 lval* lval_struct(void);
 lval* lval_instance(void);
-lval* lval_matrix(int cols, int rows, lval* data);
+lval* lval_matrix(long rows, long cols, lval* data);
 lval* lval_vector(int size, lval* data);
 
 void lval_del(lval* v);
