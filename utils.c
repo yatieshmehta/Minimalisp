@@ -1,8 +1,11 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include "mpc.h"
 
 #ifdef _WIN32
 #include <windows.h>
+#include <stdlib.h>
+#include <string.h>
 
 static char buffer[2048];
 
