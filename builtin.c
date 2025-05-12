@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "arena.h"
 #include "utils.h"
+#include <string.h>
 
 lval* lval_eval(lenv* e, lval* v);
 
@@ -576,9 +577,9 @@ lval* builtin_dotproduct(lenv* e, lval* a) {
 
 }
 
-lval* builtin_time(lenv* e, lval* a) {
+// lval* builtin_time(lenv* e, lval* a) {
     
-}
+// }
 
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
     lval* k = lval_sym(name);
@@ -603,7 +604,7 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "string?", builtin_str);
     lenv_add_builtin(e, "integer?", builtin_int);
     lenv_add_builtin(e, "qexpr?", builtin_qexpr);
-    lenv_add_builtin(e, "time", builtin_time);
+    // lenv_add_builtin(e, "time", builtin_time);
     
     lenv_put(e, sym, empty);
 

@@ -6,6 +6,7 @@
 #include "lenv.h"
 #include "mpc.h"
 #include "arena.h"
+#include "utils.h"
 
 enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_FUN, LVAL_SEXPR, LVAL_QEXPR, LVAL_STR, LVAL_STRUCT, LVAL_INST, LVAL_MAT, LVAL_VEC };
 int counter = 0;
@@ -342,10 +343,11 @@ void lval_print_expr(lval* v, char open, char close) {
 }
 
 void lval_print_str(lval* v) {
-    char* escaped = arena_alloc(global_arena, strlen(v->str) + 1);
-    strcpy(escaped, v->str);
-    escaped = mpcf_escape(escaped);
-    printf("\"%s\"", escaped);
+    // char* escaped = arena_alloc(global_arena, strlen(v->str) + 1);
+    // strcpy(escaped, v->str);
+    char* escaped = mpcf_escape(v->str);
+    // printf("|%s|", v->str);
+    printf("\"%s\"\n", escaped);
     // free(escaped);
 }
 

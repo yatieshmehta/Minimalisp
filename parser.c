@@ -1,5 +1,6 @@
 #include "mpc.h"
 #include "lval.h"
+#include "arena.h"
 
 mpc_parser_t* Number;
 mpc_parser_t* Symbol;
@@ -17,13 +18,13 @@ lval* lval_read_num(mpc_ast_t* t) {
 }
 
 lval* lval_read_str(mpc_ast_t* t) {
-  t->contents[strlen(t->contents)] = '\0';
-  char* unescaped = malloc(strlen(t->contents)); // Used to be malloc(strlen(t->contents+1)+1)
-  strcpy(unescaped, t->contents+1);
-  unescaped = mpcf_unescape(unescaped);
-  lval* str = lval_str(unescaped);
-  free(unescaped);
-  return str;
+    t->contents[strlen(t->contents)-1] = '\0';
+    char* unescaped = arena_alloc(global_arena, strlen(t->contents)); // Used to be malloc(strlen(t->contents+1)+1)
+    strcpy(unescaped, t->contents+1);
+    unescaped = mpcf_unescape(unescaped);
+    lval* str = lval_str(unescaped);
+    // free(unescaped);
+    return str;
 }
 
 
