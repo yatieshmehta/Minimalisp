@@ -2,6 +2,7 @@ players.minlsp
 original.c
 a.exe
 .vscode/
+minimalisp
 
 # Prerequisites
 *.d
