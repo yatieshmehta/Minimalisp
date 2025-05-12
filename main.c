@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
         "                                                                              \
             number  : /-?[0-9]+/ ;                                                     \
             symbol  : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&?]+/ ;                              \
-            string  : /'\\b[\\w-]+/ ;                                                  \
+            string  : /\"(\\\\.|[^\"])*\"/ ;                                           \
             comment : /;[^\\r\\n]*/ ;                                                  \
             sexpr   : '(' <expr>* ')' ;                                                \
             qexpr   : '{' <expr>* '}' ;                                                \
@@ -35,14 +35,12 @@ int main(int argc, char** argv) {
             lispy   : /^/ <expr>* /$/ ;                                                \
         ",
         Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
+    // mpca_lang_apply(String, NULL);
 
     global_arena = arena_create(1024 * 64);
 
     lenv* e = lenv_new();
     lenv_add_builtins(e);
-
-    size_t size = sizeof(lval);
-    // printf("Size: %zu \n", size);
 
     mpc_result_t first;
     mpc_parse("<stdin>", "(func {def} (lambda {args body} {func (list (first args)) (lambda (rest args) body)}))", Lispy, &first);

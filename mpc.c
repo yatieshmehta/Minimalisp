@@ -2634,13 +2634,13 @@ static mpc_val_t *mpcf_unescape_new(mpc_val_t *x, const char *input, const char 
 
 mpc_val_t *mpcf_escape(mpc_val_t *x) {
   mpc_val_t *y = mpcf_escape_new(x, mpc_escape_input_c, mpc_escape_output_c);
-  free(x);
+  // free(x);
   return y;
 }
 
 mpc_val_t *mpcf_unescape(mpc_val_t *x) {
   mpc_val_t *y = mpcf_unescape_new(x, mpc_escape_input_c, mpc_escape_output_c);
-  free(x);
+  // free(x);
   return y;
 }
 
